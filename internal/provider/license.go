@@ -42,7 +42,7 @@ func (l *LicenseProvider) List() ([]Template, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFetchFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: status %d", ErrFetchFailed, resp.StatusCode)
@@ -55,7 +55,7 @@ func (l *LicenseProvider) List() ([]Template, error) {
 
 	var templates []Template
 	for _, item := range ghList {
-		templates = append(templates, Template{Key: item.Key, Name: item.Name})
+		templates = append(templates, Template(item))
 	}
 
 	return templates, nil
@@ -70,7 +70,7 @@ func (l *LicenseProvider) GetContent(key string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrFetchFailed, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%w: status %d", ErrFetchFailed, resp.StatusCode)
