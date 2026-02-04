@@ -39,7 +39,7 @@ func (g *GitignoreProvider) List() ([]Template, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFetchFailed, err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%w: status %d", ErrFetchFailed, response.StatusCode)
@@ -73,7 +73,7 @@ func (g *GitignoreProvider) GetContent(key string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrFetchFailed, err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%w: status %v", ErrFetchFailed, response.StatusCode)

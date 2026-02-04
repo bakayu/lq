@@ -11,7 +11,7 @@ func TestGitignoreList(t *testing.T) {
 	// 1. Create a mock server that mimics Toptal's API
 	mockResponse := `{"go": {"name": "Go", "fileName": "Go.gitignore"}, "rust": {"name": "Rust", "fileName": "Rust.gitignore"}}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, mockResponse)
+		_, _ = fmt.Fprint(w, mockResponse)
 	}))
 	defer server.Close()
 
@@ -37,7 +37,7 @@ func TestLicenseGetContent(t *testing.T) {
 	// 1. Mock GitHub API response
 	mockBody := `{"body": "MIT License Content..."}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, mockBody)
+		_, _ = fmt.Fprint(w, mockBody)
 	}))
 	defer server.Close()
 
