@@ -4,69 +4,135 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/bakayu/lq/internal/provider"
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/huh/spinner"
 )
 
 func main() {
 	var (
 		fileType string
-		template string
+		selected provider.Template
 		confirm  bool
+		owner    string
 	)
-	err := huh.NewSelect[string]().
-		Title("File to generate >").
-		Options(
-			huh.NewOption("Gitignore", ".gitignore"),
-			huh.NewOption("License", "LICENSE"),
-		).
-		Value(&fileType).
-		Run()
 
-	if err != nil {
+	theme := huh.ThemeCatppuccin()
+
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("File to generate >").
+				Options(
+					huh.NewOption("Gitignore", ".gitignore"),
+					huh.NewOption("License", "LICENSE"),
+				).
+				Value(&fileType),
+		),
+	).WithTheme(theme)
+
+	if err := form.Run(); err != nil {
 		log.Fatal(err)
 	}
 
-	var options []huh.Option[string]
-
+	var prov provider.Provider
 	if fileType == ".gitignore" {
-		options = []huh.Option[string]{
-			huh.NewOption("Go", "Go"),
-			huh.NewOption("Rust", "Rust"),
-			huh.NewOption("Java", "Java"),
-			huh.NewOption("Python", "Python"),
-		}
+		prov = provider.NewGitignoreProvider()
 	} else {
-		options = []huh.Option[string]{
-			huh.NewOption("MIT", "MIT"),
-			huh.NewOption("Apache 2.0", "Apache-2.0"),
-			huh.NewOption("GNU GPLv3", "GPL-3.0"),
-		}
+		prov = provider.NewLicenseProvider()
 	}
 
-	err = huh.NewSelect[string]().
-		Title("Choose a template").
-		Options(options...).
-		Value(&template).
-		Run()
-
-	if err != nil {
+	var templates []provider.Template
+	action := func() {
+		var err error
+		templates, err = prov.List()
+		if err != nil {
+			log.Fatalf("Error fetching templates: %v", err)
+		}
+	}
+	if err := spinner.New().Title("Fetching templates...").Action(action).Run(); err != nil {
 		log.Fatal(err)
 	}
 
-	err = huh.NewConfirm().
-		Title(fmt.Sprintf("Creating %s using %s template", fileType, template)).
-		Value(&confirm).
-		Run()
+	var options []huh.Option[provider.Template]
+	for _, t := range templates {
+		options = append(options, huh.NewOption(t.Name, t))
+	}
 
-	if err != nil {
+	fields := []huh.Field{
+		huh.NewSelect[provider.Template]().
+			Title("Choose a template").
+			Options(options...).
+			Value(&selected).
+			Height(15).
+			Filtering(true),
+	}
+
+	if fileType == "LICENSE" {
+		fields = append(fields,
+			huh.NewInput().
+				Title("Who is the copyright holder?").
+				Placeholder("e.g. John Doe").
+				Value(&owner),
+		)
+	}
+
+	form = huh.NewForm(
+		huh.NewGroup(fields...),
+	).WithTheme(theme)
+
+	if err := form.Run(); err != nil {
 		log.Fatal(err)
 	}
 
-	if confirm {
-		fmt.Println("Success")
-	} else {
+	form = huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title(fmt.Sprintf("Create %s using %s template?", fileType, selected.Name)).
+				Value(&confirm),
+		),
+	).WithTheme(theme)
+
+	if err := form.Run(); err != nil {
+		log.Fatal(err)
+	}
+
+	if !confirm {
 		fmt.Println("Cancelled")
 		os.Exit(0)
 	}
+
+	content, err := prov.GetContent(selected.Key)
+	if err != nil {
+		log.Fatalf("Error fetching content: %v", err)
+	}
+
+	if fileType == "LICENSE" {
+		content = fillLicensePlaceholders(content, owner)
+	}
+
+	fileName := fileType
+	if err := os.WriteFile(fileName, []byte(content), 0644); err != nil {
+		log.Fatalf("Error writing file: %v", err)
+	}
+
+	fmt.Printf("\nSuccessfully created %s!\n", fileName)
+}
+
+// fillLicensePlaceholders replaces standard GitHub API placeholders
+func fillLicensePlaceholders(text, owner string) string {
+	year := fmt.Sprintf("%d", time.Now().Year())
+
+	// Standard GitHub placeholders
+	text = strings.ReplaceAll(text, "[year]", year)
+	text = strings.ReplaceAll(text, "[fullname]", owner)
+
+	// Common variations found in some raw templates
+	text = strings.ReplaceAll(text, "<year>", year)
+	text = strings.ReplaceAll(text, "<copyright holders>", owner)
+
+	return text
 }
