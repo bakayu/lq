@@ -71,7 +71,7 @@ main() {
   fi
 
   # Construct the archive filename and download URL.
-  FILENAME=";lq_${OS}_${ARCH}.tar.gz"
+  FILENAME="lq_${OS}_${ARCH}.tar.gz"
   DOWNLOAD_URL="https://github.com/$REPO/releases/download/${VERSION}/${FILENAME}"
 
   # Download and extract the binary.
