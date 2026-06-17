@@ -126,12 +126,12 @@ func main() {
 func fillLicensePlaceholders(text, owner string) string {
 	year := fmt.Sprintf("%d", time.Now().Year())
 
-	// Standard GitHub placeholders
-	text = strings.ReplaceAll(text, "[year]", year)
-	text = strings.ReplaceAll(text, "[fullname]", owner)
-
 	// Common variations found in some raw templates
+	text = strings.ReplaceAll(text, "[year]", year)
+	text = strings.ReplaceAll(text, "[yyyy]", year)
 	text = strings.ReplaceAll(text, "<year>", year)
+	text = strings.ReplaceAll(text, "[fullname]", owner)
+	text = strings.ReplaceAll(text, "[name of copyright owner]", owner)
 	text = strings.ReplaceAll(text, "<copyright holders>", owner)
 
 	return text
