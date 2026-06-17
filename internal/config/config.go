@@ -13,13 +13,21 @@ type Config struct {
 	LicenseGetURL    string
 }
 
+const (
+	// Default URLs for fetching gitignore and license templates
+	DefaultGitignoreListURL = "https://www.toptal.com/developers/gitignore/api/list"
+	DefaultGitignoreGetURL  = "https://www.toptal.com/developers/gitignore/api/%s"
+	DefaultLicenseListURL   = "https://api.github.com/licenses"
+	DefaultLicenseGetURL    = "https://api.github.com/licenses/%s"
+)
+
 // Load reads configuration from environment variables, falling back to defaults if not set.
 func Load() (*Config, error) {
 	cfg := &Config{
-		GitignoreListURL: getEnv("LQ_GITIGNORE_LIST_URL", "https://www.toptal.com/developers/gitignore/api/list?format=json"),
-		GitignoreGetURL:  getEnv("LQ_GITIGNORE_GET_URL", "https://www.toptal.com/developers/gitignore/api/%s"),
-		LicenseListURL:   getEnv("LQ_LICENSE_LIST_URL", "https://api.github.com/licenses"),
-		LicenseGetURL:    getEnv("LQ_LICENSE_GET_URL", "https://api.github.com/licenses/%s"),
+		GitignoreListURL: getEnv("LQ_GITIGNORE_LIST_URL", DefaultGitignoreListURL),
+		GitignoreGetURL:  getEnv("LQ_GITIGNORE_GET_URL", DefaultGitignoreGetURL),
+		LicenseListURL:   getEnv("LQ_LICENSE_LIST_URL", DefaultLicenseListURL),
+		LicenseGetURL:    getEnv("LQ_LICENSE_GET_URL", DefaultLicenseGetURL),
 	}
 
 	if err := cfg.Validate(); err != nil {
