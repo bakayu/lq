@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -124,15 +125,23 @@ func main() {
 
 // fillLicensePlaceholders replaces standard GitHub API placeholders
 func fillLicensePlaceholders(text, owner string) string {
-	year := fmt.Sprintf("%d", time.Now().Year())
+	year := strconv.Itoa(time.Now().Year())
 
-	// Common variations found in some raw templates
-	text = strings.ReplaceAll(text, "[year]", year)
-	text = strings.ReplaceAll(text, "[yyyy]", year)
-	text = strings.ReplaceAll(text, "<year>", year)
-	text = strings.ReplaceAll(text, "[fullname]", owner)
-	text = strings.ReplaceAll(text, "[name of copyright owner]", owner)
-	text = strings.ReplaceAll(text, "<copyright holders>", owner)
+	replacer := strings.NewReplacer(
+		// Year variants
+		"[year]", year,
+		"[yyyy]", year,
+		"<year>", year,
+		"{year}", year,
 
-	return text
+		// Owner/Author variants
+		"[fullname]", owner,
+		"[name of copyright owner]", owner,
+		"<copyright holders>", owner,
+		"<name of author>", owner,
+		"<owner>", owner,
+		"[project author]", owner,
+	)
+
+	return replacer.Replace(text)
 }
