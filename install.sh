@@ -27,8 +27,16 @@ get_os() {
 
 # Get the architecture.
 get_arch() {
-  case "$(uname -m)" in
-    x86_64|amd64) ARCH='x86_64';;
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64|amd64)
+      # On macOS, check if we are running under Rosetta 2 translation.
+      if [ "$(uname -s)" = "Darwin" ] && [ "$(sysctl -in sysctl.proc_translated)" = "1" ]; then
+        ARCH='arm64'
+      else
+        ARCH='x86_64'
+      fi
+      ;;
     aarch64|arm64) ARCH='arm64';;
     i386|i686) ARCH='i386';;
     *)

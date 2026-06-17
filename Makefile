@@ -3,7 +3,7 @@ BINARY_NAME=lq
 CMD_PATH=./cmd/lq
 BUILD_DIR=./build
 
-# Versioning -- NEW SECTION
+# Versioning
 # Get the latest git tag, or fallback to "dev" if no tags are found.
 VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 LDFLAGS := -ldflags="-X 'main.version=$(VERSION)'"

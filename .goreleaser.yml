@@ -9,7 +9,7 @@ before:
 
 builds:
   - # Each build is an object with its own configuration.
-    id: gitx
+    id: lq
     # The main package for your application.
     main: ./cmd/lq/
     # The name of the binary file.
@@ -35,13 +35,8 @@ archives:
   - # Format for the archive (tar.gz for Unix-like systems, zip for Windows).
     format: tar.gz
     # This template creates archives with platform-specific naming conventions
-    # Examples: "gitx_Linux_x86_64.tar.gz", "gitx_Darwin_arm64.tar.gz"
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
+    # Examples: "lq_Linux_x86_64.tar.gz", "lq_Darwin_arm64.tar.gz"
+    name_template: '{{ .ProjectName }}_{{ title .Os }}_{{ if eq .Arch "amd64" }}x86_64{{ else if eq .Arch "386" }}i386{{ else }}{{ .Arch }}{{ end }}'
     # Files to include in the archive along with the binary.
     files:
       - LICENSE
