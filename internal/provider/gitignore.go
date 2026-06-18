@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type GitignoreProvider struct {
@@ -82,15 +83,19 @@ func (g *GitignoreProvider) List() ([]Template, error) {
 
 // GetContent fetches the raw text of a specific gitignore template
 func (g *GitignoreProvider) GetContent(key string) (string, error) {
-	requestUrl := fmt.Sprintf(g.GetURL, key)
-	response, err := g.Client.Get(requestUrl)
+	// Use PathEscape (GitHub and Toptal handle C++ natively)
+	escapedKey := url.PathEscape(key)
+	targetURL := fmt.Sprintf(g.GetURL, escapedKey)
+
+	response, err := g.Client.Get(targetURL)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrFetchFailed, err)
+		return "", fmt.Errorf("failed to fetch content: %w", err)
 	}
 	defer func() { _ = response.Body.Close() }()
 
-	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%w: status %v", ErrFetchFailed, response.StatusCode)
+	// The ultimate safety net: catch 404s and 500s explicitly
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return "", fmt.Errorf("provider returned error status: %s for URL: %s", response.Status, targetURL)
 	}
 
 	body, err := io.ReadAll(response.Body)
@@ -98,5 +103,20 @@ func (g *GitignoreProvider) GetContent(key string) (string, error) {
 		return "", err
 	}
 
+	var jsonResponse struct {
+		Source  string `json:"source"`
+		Content string `json:"content"`
+	}
+
+	if err := json.Unmarshal(body, &jsonResponse); err == nil {
+		if jsonResponse.Source != "" {
+			return jsonResponse.Source, nil
+		}
+		if jsonResponse.Content != "" {
+			return jsonResponse.Content, nil
+		}
+	}
+
+	// Fallback for raw text APIs
 	return string(body), nil
 }
