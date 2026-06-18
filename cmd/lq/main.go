@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bakayu/lq/internal/config"
 	"github.com/bakayu/lq/internal/provider"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
@@ -22,6 +23,12 @@ func main() {
 	)
 
 	theme := huh.ThemeCatppuccin()
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration Error: %v\n", err)
+		os.Exit(1)
+	}
 
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -38,12 +45,11 @@ func main() {
 	if err := form.Run(); err != nil {
 		log.Fatal(err)
 	}
-
 	var prov provider.Provider
 	if fileType == ".gitignore" {
-		prov = provider.NewGitignoreProvider()
+		prov = provider.NewGitignoreProvider(cfg.GitignoreListURL, cfg.GitignoreGetURL)
 	} else {
-		prov = provider.NewLicenseProvider()
+		prov = provider.NewLicenseProvider(cfg.LicenseListURL, cfg.LicenseGetURL)
 	}
 
 	var templates []provider.Template

@@ -3,12 +3,8 @@ package provider
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-)
-
-const (
-	defaultLicenseListURL = "https://api.github.com/licenses"
-	defaultLicenseGetURL  = "https://api.github.com/licenses/%s"
 )
 
 type LicenseProvider struct {
@@ -17,69 +13,82 @@ type LicenseProvider struct {
 	GetURL  string
 }
 
-func NewLicenseProvider() *LicenseProvider {
+func NewLicenseProvider(listURL, getURL string) *LicenseProvider {
 	return &LicenseProvider{
 		Client:  http.DefaultClient,
-		ListURL: defaultLicenseListURL,
-		GetURL:  defaultLicenseGetURL,
+		ListURL: listURL,
+		GetURL:  getURL,
 	}
 }
 
-type ghLicenseSimple struct {
-	Key  string `json:"key"`
-	Name string `json:"name"`
-}
-
-type ghLicenseDetail struct {
-	Body string `json:"body"`
-}
-
+// List fetches all available license templates
 func (l *LicenseProvider) List() ([]Template, error) {
-	req, _ := http.NewRequest("GET", l.ListURL, nil)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := l.Client.Do(req)
+	response, err := l.Client.Get(l.ListURL)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrFetchFailed, err)
+		return nil, fmt.Errorf("failed to fetch license templates: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() {
+		err := response.Body.Close()
+		if err != nil {
+			fmt.Printf("failed to close response body: %v\n", err)
+		}
+	}()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: status %d", ErrFetchFailed, resp.StatusCode)
-	}
-
-	var ghList []ghLicenseSimple
-	if err := json.NewDecoder(resp.Body).Decode(&ghList); err != nil {
-		return nil, fmt.Errorf("failed to parse json: %w", err)
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	var templates []Template
-	for _, item := range ghList {
-		templates = append(templates, Template(item))
+
+	// Standard Schema: Array of objects (Used by both GitHub and GitLab)
+	var standardSchema []struct {
+		Key  string `json:"key"`
+		Name string `json:"name"`
 	}
 
-	return templates, nil
+	if err := json.Unmarshal(body, &standardSchema); err == nil && len(standardSchema) > 0 {
+		for _, val := range standardSchema {
+			templates = append(templates, Template{Key: val.Key, Name: val.Name})
+		}
+		return templates, nil
+	}
+
+	return nil, fmt.Errorf("unsupported API schema returned from %s", l.ListURL)
 }
 
+// GetContent fetches the content of a specific license template
 func (l *LicenseProvider) GetContent(key string) (string, error) {
 	url := fmt.Sprintf(l.GetURL, key)
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := l.Client.Do(req)
+	response, err := l.Client.Get(url)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrFetchFailed, err)
+		return "", fmt.Errorf("failed to fetch license content: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() {
+		err := response.Body.Close()
+		if err != nil {
+			fmt.Printf("failed to close response body: %v\n", err)
+		}
+	}()
 
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%w: status %d", ErrFetchFailed, resp.StatusCode)
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
 	}
 
-	var detail ghLicenseDetail
-	if err := json.NewDecoder(resp.Body).Decode(&detail); err != nil {
-		return "", fmt.Errorf("failed to parse json: %w", err)
+	var jsonResponse struct {
+		Body    string `json:"body"`    // GitHub schema
+		Content string `json:"content"` // GitLab schema
 	}
 
-	return detail.Body, nil
+	if err := json.Unmarshal(body, &jsonResponse); err == nil {
+		if jsonResponse.Body != "" {
+			return jsonResponse.Body, nil
+		}
+		if jsonResponse.Content != "" {
+			return jsonResponse.Content, nil
+		}
+	}
+
+	return string(body), nil
 }

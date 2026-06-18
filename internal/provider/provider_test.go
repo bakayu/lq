@@ -16,8 +16,7 @@ func TestGitignoreList(t *testing.T) {
 	defer server.Close()
 
 	// 2. Configure provider to use the mock URL
-	p := NewGitignoreProvider()
-	p.ListURL = server.URL // Override the URL
+	p := NewGitignoreProvider(server.URL, "http://dummy-fallback-get")
 
 	// 3. Test
 	list, err := p.List()
@@ -41,9 +40,7 @@ func TestLicenseGetContent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// 2. Configure
-	p := NewLicenseProvider()
-	p.GetURL = server.URL + "/%s"
+	p := NewLicenseProvider("http://dummy-fallback-list", server.URL+"/%s")
 
 	// 3. Test
 	content, err := p.GetContent("mit")
